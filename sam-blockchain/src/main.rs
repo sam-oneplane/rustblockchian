@@ -1,4 +1,6 @@
-use sam_blockchain::{BlockChain, Transaction};
+
+use sam_blockchain::{BlockChain, transaction::Transaction};
+
 
 fn main() {
     let mut bchain = BlockChain::new(3);

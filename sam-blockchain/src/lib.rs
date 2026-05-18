@@ -1,5 +1,11 @@
+mod merkle;
+pub mod transaction;
+
 use std::{fmt::{self}, time::{SystemTime, UNIX_EPOCH}};
 use sha2::{Sha256, Digest};
+use transaction::Transaction;
+use merkle::MerkleTree;
+
 
 #[derive(Debug)]
 pub struct BlockChain {
@@ -33,19 +39,13 @@ impl BlockChain {
     }
 
     pub fn is_valid(&self) -> bool {
-        /*
-            1. is hash == calc_hash()
-            2. does prev_hash == hash of prev block
-         */
-
+    
         for window in self.chain.windows(2) {
             let prev = &window[0];
             let curr = &window[1];
-
-            if curr.hash != curr.calc_hash() {
+            if curr.hash != curr.generate_hash() {
                 return false;
             }
-
             if curr.prev_hash != prev.hash {
                 return false;
             }
@@ -91,21 +91,23 @@ impl Block {
             hash: String::new(),
             nonce: 0,
         };
-        block.hash = block.calc_hash();
+        block.hash = MerkleTree::merkle_root(&block.transactions);
         block
     }
 
-    fn calc_hash(&self) -> String {
+    fn generate_hash(&self) -> String {
+        /* direct map transactions to string 
         let trans_to_str : String = self.transactions.iter()
                                     .map(|tx| {
                                         format!("{}{}{}",tx.sender, tx.recipient, tx.amount)
                                     }).collect();
+        */
 
         let word = format!("{}{}{}{}{}",
                             self.index.to_string(),
                             self.timestamp.to_string(),
                             self.prev_hash,
-                            trans_to_str, 
+                            MerkleTree::merkle_root(&self.transactions), 
                             self.nonce);
         hex::encode(Sha256::digest(word.as_bytes()))
     }
@@ -116,7 +118,7 @@ impl Block {
 
         while !self.hash.starts_with(&zeros) {
             self.nonce += 1;
-            self.hash = self.calc_hash();
+            self.hash = self.generate_hash();
         }
     }
 
@@ -148,34 +150,6 @@ impl fmt::Display for Block {
         Ok(())
     }
 }
-
-/* ################################# */
-
-#[derive(Debug)]
-pub struct Transaction {
-    pub sender: String,
-    pub recipient: String,
-    pub amount: f64, 
-}
-
-impl Transaction {
-    pub fn new(sender: &str, recipient: &str, amount: f64) -> Self {
-        Self { 
-            sender: sender.to_string(), 
-            recipient: recipient.to_string(), 
-            amount,
-        }
-    }
-}
-
-impl fmt::Display for Transaction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { 
-        write!(f, "{}->{}: {:.2}", self.sender, self.recipient, self.amount)?;
-        Ok(())
-    }
-}
-
-
 
 
 /* ################ Tests ################# */
