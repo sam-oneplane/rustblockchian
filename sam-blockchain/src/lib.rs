@@ -10,6 +10,7 @@ use merkle::MerkleTree;
 #[derive(Debug)]
 pub struct BlockChain {
     chain: Vec<Block>,
+    mempool: Vec<Transaction>,
     pub difficulty: usize,
 }
 
@@ -18,7 +19,8 @@ impl BlockChain {
         let genesis = Block::new(0, Vec::new(), "0".repeat(64).as_str());
         Self {
             chain: vec![genesis],
-            difficulty, 
+            mempool: vec![],
+            difficulty,
         }
     }
 
@@ -52,6 +54,20 @@ impl BlockChain {
         }
         return true;
     }
+}
+
+impl BlockChain {
+    pub fn submit_transaction(&mut self, tr: Transaction) {
+        self.mempool.push(tr);
+    }
+
+    fn mine_pending_trans(& mut self) {
+
+    }
+
+    pub fn mempool_size(&self) -> usize {
+        self.mempool.len()
+    } 
 }
 
 impl fmt::Display for BlockChain {
