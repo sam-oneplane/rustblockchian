@@ -6,6 +6,8 @@ use sha2::{Sha256, Digest};
 use transaction::Transaction;
 use merkle::MerkleTree;
 
+const MINER_ADDR : &str = "www.minar_addr.com";
+const MINOR_SENDER : &str = "SYSTEM";
 
 #[derive(Debug)]
 pub struct BlockChain {
@@ -16,6 +18,7 @@ pub struct BlockChain {
 
 impl BlockChain {
     pub fn new(difficulty : usize) -> Self {
+
         let genesis = Block::new(0, Vec::new(), "0".repeat(64).as_str());
         Self {
             chain: vec![genesis],
@@ -24,12 +27,18 @@ impl BlockChain {
         }
     }
 
-    pub fn add_block(&mut self, trs: Vec<Transaction>) {
+    fn add_block(&mut self) {
 
         let last_block = self.last_block();
-        let idx = last_block.index + 1;
+        let idx: u64 = last_block.index + 1;
         let prev_hash = &last_block.hash.clone();
-        let mut new_block = Block::new(idx, trs, prev_hash);
+        let mut transactions = std::mem::take(&mut self.mempool);
+        transactions.insert(
+            0, 
+            Transaction::new(MINOR_SENDER, MINER_ADDR, 50.0)
+        );
+
+        let mut new_block = Block::new(idx, transactions, prev_hash);
         
         new_block.mine(self.difficulty);
 
@@ -61,7 +70,12 @@ impl BlockChain {
         self.mempool.push(tr);
     }
 
-    fn mine_pending_trans(& mut self) {
+    pub fn mine_pending_trans(& mut self) {
+        if self.mempool.is_empty() {
+            return;
+        }
+        self.add_block();
+        self.mempool.clear();
 
     }
 
@@ -194,11 +208,16 @@ mod tests {
         let trs = vec![
             Transaction::new("Alice", "Bob", 10.5),
         ];
-        bchain.add_block(trs);
+        for tr in trs {
+            bchain.submit_transaction(tr);
+        }
+    
+        bchain.mine_pending_trans();
 
         let lblock = bchain.last_block();
         assert_eq!(lblock.index, 1);
-        assert_eq!(lblock.transactions[0].sender, String::from("Alice"));
+        assert_eq!(lblock.transactions[0].sender, String::from("SYSTEM"));
+        assert_eq!(lblock.transactions[1].recipient, String::from("Bob"));
         let lblock = &bchain.chain[1];
         let mblock  = &bchain.chain[0];
         assert_eq!(lblock.prev_hash, mblock.hash);
