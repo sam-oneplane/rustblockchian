@@ -4,7 +4,9 @@ use std::{fmt::{self}};
 pub struct Transaction {
     pub sender: String,
     pub recipient: String,
-    pub amount: f64, 
+    pub amount: f64,
+    pub signature: String,
+    pub public_key: String,
 }
 
 impl Transaction {
@@ -13,10 +15,12 @@ impl Transaction {
             sender: sender.to_string(), 
             recipient: recipient.to_string(), 
             amount,
+            signature: String::new(),
+            public_key: String::new()
         }
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn sig_string(&self) -> String {
         format!("{}{}{}", self.sender, self.recipient, self.amount)
     }
 
