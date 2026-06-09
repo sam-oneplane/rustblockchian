@@ -1,9 +1,10 @@
 use std::{fmt::{self}, time::{SystemTime, UNIX_EPOCH}};
+use serde::{Deserialize, Serialize};
 use sha2::{Sha256, Digest};
 use crate::merkle::MerkleTree;
 use crate::transaction::Transaction;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Block {
     pub index : u64,
     pub timestamp: u64,

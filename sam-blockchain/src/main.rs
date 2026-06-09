@@ -1,39 +1,118 @@
 
-use sam_blockchain::{blockchain::BlockChain, transaction::Transaction, wallet::{Wallet, verify}};
+use clap::{Parser, Subcommand};
+use sam_blockchain::{blockchain::BlockChain, state, transaction::Transaction, wallet::{ Wallet}};
+use ed25519_dalek::{SigningKey};
+
+#[derive(Parser)]
+#[command(name = "blockchain", about = "A simple Rust blockchain")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    NewWallet,
+    Balance {
+        #[arg(short, long)]
+        address: String,
+    },
+    Send {
+        #[arg(short, long)]
+        from: String,
+        #[arg(short, long)]
+        to: String,
+        #[arg(short, long)]
+        amount: f64,
+        #[arg(short, long)]
+        privkey: String,
+    },
+    Mine {
+        #[arg(short, long)]
+        miner: String,
+    },
+    Show,
+    Validate,
+}
+
 
 fn main() {
-    let bob = Wallet::new();
-    let alice = Wallet::new(); 
-    let dave = Wallet::new();
+    let cli = Cli::parse();
+    let mut chain: BlockChain = state::load("chain.json");
 
-    let mut bchain = BlockChain::new(3);
+    match cli.command {
+        Commands::NewWallet => {
+            let wallet = Wallet::new();
+            let privkey = hex::encode(wallet.signing_key.to_bytes());
 
-    let mut tr = Transaction::new(&alice.public_key, &bob.public_key, 20.5);
-    alice.sign(& mut tr);
-    bchain.submit_transaction(tr);
+            // build a simple JSON object with both keys
+            let wallet_json = serde_json::json!({
+                "public_key": wallet.public_key,
+                "private_key": privkey
+            });
 
+            // save to a file named after the public key (first 8 chars)
+            let filename = format!("wallet_{}.json", &wallet.public_key[..8]);
+            std::fs::write(&filename, serde_json::to_string_pretty(&wallet_json).unwrap()).unwrap();
 
-    tr = Transaction::new(&bob.public_key, &dave.public_key, 13.3);
-    bob.sign(& mut tr);
-    bchain.submit_transaction(tr);
+            println!("New wallet created:");
+            println!("  Public key : {}", wallet.public_key);
+            println!("  Private key : {}", privkey);
+            println!("  Saved to   : {}", filename);
+        }
+        Commands::Balance { address } => {  
+            let privkey_hex = state::load_wallet(&address)
+                .expect("expected my wallet key");
+            let signing_key = SigningKey::from_bytes(&hex::decode(&privkey_hex)
+                .unwrap()
+                .try_into()
+                .unwrap());
+            let wallet = Wallet::from_signing_key(signing_key);
+            let balance = wallet.balance(&chain);
+            println!("Balance for {}...: {:.2}", &address[..8], balance);
+        }
+        Commands::Send { from, to, amount, privkey } => {  
+            // use provided privkey or try loading from wallet file
+            let privkey_hex = if !privkey.is_empty() {
+                privkey
+            } else {
+                state::load_wallet(&from).expect("no wallet found, pass --privkey manually")
+            };
 
-    tr = Transaction::new(&dave.public_key, &alice.public_key, 10.5);
-    dave.sign(& mut tr);
-    print!("Verify Dave Transaction: {}", verify(&tr));
-    bchain.submit_transaction(tr);
-    
-    println!("Blockchian size: {}\n", bchain.mempool_size());
-    
+            let prvky_bytes: [u8; 32] = hex::decode(&privkey_hex)
+                .unwrap()
+                .try_into()
+                .unwrap();
+            let signing_key = SigningKey::from_bytes(&prvky_bytes);
+            let wallet = Wallet::from_signing_key(signing_key);
 
-    let start = std::time::Instant::now();
-    bchain.mine_pending_trans(&alice.public_key);
-    let elapsed = start.elapsed();
+            let tr = Transaction::new(
+                    &wallet.public_key, &to, amount);
+            chain.submit_transaction(tr);
+            
+            println!("transaction submitted {}", chain.mempool_size());
+        }
+        Commands::Mine { miner } => {
+            if chain.mempool_size() == 0 {
+                println!("No pending transactions to mine.");
+            } else {
+                println!("Pending transactions: {}", chain.mempool_size());
+                chain.mine_pending_trans(&miner);
+                println!("Mined block added to chain.");
+            }
+        }
+        Commands::Show => { 
+            println!("{}", chain);
+        }
+        Commands::Validate => {
+            if chain.is_valid() {
+                println!("Chain is valid ✓");
+            } else {
+                println!("Chain is invalid ✗");
+            }
+        }
+    }
 
-    println!("Blockchian size: {}", bchain.mempool_size());
-    print!("Balance Alice's Walllet : {}", alice.balance(&bchain));
-
-    println!("{}", bchain);
-    println!("\nIs Valid BlockChain:  {}", bchain.is_valid());
-    println!("\nAdd new block done in {} msec", elapsed.as_millis());
+    state::save(&chain, "chain.json");
 }
 

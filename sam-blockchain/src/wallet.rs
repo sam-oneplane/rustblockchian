@@ -7,7 +7,7 @@ use crate::blockchain::BlockChain;
 
 #[derive(Debug)]
 pub struct Wallet {
-    signing_key : SigningKey,
+    pub signing_key : SigningKey,
     pub public_key : String,
 }
 
@@ -19,6 +19,11 @@ impl Wallet {
             public_key,
             signing_key, 
         }
+    }
+
+    pub fn from_signing_key(signing_key: SigningKey) -> Self {
+        let public_key = hex::encode(signing_key.verifying_key().as_bytes());
+        Wallet { public_key, signing_key }
     }
 
     pub fn sign(&self, tr: & mut Transaction) {
@@ -63,4 +68,5 @@ pub fn verify(tr: &Transaction) -> bool {
     /* verify massge : &[u8] with Signature */
     verifying_key.verify(msg.as_bytes(), &sig).is_ok()
 }
+
 

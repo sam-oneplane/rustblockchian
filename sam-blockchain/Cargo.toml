@@ -8,3 +8,6 @@ hex = "0.4.3"
 sha2 = "0.11.0"
 ed25519-dalek = {version = "2", features = ["rand_core"]} 
 rand = "0.8"
+clap = { version = "4.5", features = ["derive"] }
+serde      = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

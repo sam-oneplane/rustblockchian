@@ -1,4 +1,6 @@
 
+use serde::{Deserialize, Serialize};
+
 use crate::block::Block;
 use crate::transaction::Transaction;
 use crate::wallet;
@@ -6,7 +8,7 @@ use std::{fmt::{self}};
 
 const MINOR_SENDER : &str = "SYSTEM";
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BlockChain {
     pub chain: Vec<Block>,
     mempool: Vec<Transaction>,
@@ -88,7 +90,8 @@ impl BlockChain {
 
     pub fn mempool_size(&self) -> usize {
         self.mempool.len()
-    } 
+    }
+
 }
 
 impl fmt::Display for BlockChain {

@@ -1,6 +1,7 @@
 use std::{fmt::{self}};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Transaction {
     pub sender: String,
     pub recipient: String,
